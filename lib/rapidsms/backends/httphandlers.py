@@ -464,7 +464,122 @@ class End2EndHandler(RapidBaseHttpHandler):
             lines.insert(0,"Error!")
         
         klass.backend.debug("Got response: %s" % "\n".join(response))
+
         
+class ClickatellHandler(RapidBaseHttpHandler):
+    '''An HttpHandler for the Clickatell mobile gateway'''  
+    
+    # This is the format of the post string
+    # http://api.clickatell.com/http/sendmsg?user=xxxxx&password=xxxxx&api_id=xxxxx&to=xxxxxxxxx&from=xxxxxxx&text=Meet+me+outside 
+    # user: clickatell username
+    # password: clickatell password
+    # api_id: unique id for account on clickatel api
+    # to: number of the sms receiver
+    # from: number of the sms sender
+    # text: short message text
+    
+    param_text = "text"
+    param_sender = "from"
+    
+    outgoing_url = "http://api.clickatell.com/http/sendmsg"
+    # api_id (customer identification number)
+    # user: clickatell username
+    # password: clickatell password
+    # to: number of the sms receiver
+    # text: short message text
+    outgoing_params = {"api_id" : "please", 
+                       "user" : "fix", 
+                       "password" : "me" 
+                       }
+    param_text_outgoing = "text"
+    param_dst_outgoing = "to"
+    param_sender_outgoing = "from"
+
+
+    def do_GET(self):
+        params = get_params(self)
+        self.handle_params(params)
+        
+    def do_POST(self):
+        params = post_params(self)
+        self.handle_params(params)
+        
+    def handle_params(self, params):
+        if not params:
+            self.respond(500, "Must specify parameters in the URL!")
+            return
+        else:
+            # parameters are: 
+            text = None
+            sender = None
+            date = None
+            for param in params:    
+                if param[0] == ClickatellHandler.param_text:
+                    # TODO watch out because urllib.unquote 
+                    # will blow up on unicode text 
+                    text = urllib.unquote(param[1])
+                elif param[0] == ClickatellHandler.param_sender:
+                    # TODO watch out because urllib.unquote 
+                    # will blow up on unicode text 
+                    sender = urllib.unquote(param[1])
+                # TODO: deal with timestamps
+            if text and sender: 
+                # messages come in from end2end with + instead of spaces, so
+                # change them
+                text = " ".join(text.split("+"))
+                
+                # there is an error reporting module in End2End that can forward
+                # errors to an endpoint.  If you configure it to forward here
+                # they will get logged and not included as incoming messages 
+                if text == "Message could not be sent" and sender == "112":
+                    self.log_message("Received error message in End2End gateway: %s" % params)
+                    self.respond(200, "Thanks for the error message!")
+                    return
+                
+                # route the message
+                msg = self.server.backend.message(sender, text, date)
+                self.server.backend.route(msg)
+                # respond with the number and text 
+                # only really useful for testing
+                self.respond(200, "{'phone':'%s', 'message':'%s'}" % (sender, text))
+                return
+            else:
+                self.respond(500, "You must specify a valid number and message")
+                return
+
+    @classmethod
+    @split_long_message
+    def outgoing(klass, message):
+        klass.backend.debug("Clickatell outgoing message: %s" % message)
+        params = ClickatellHandler.outgoing_params.copy()
+        params[ClickatellHandler.param_text_outgoing] = message.text
+        params[ClickatellHandler.param_dst_outgoing] = message.connection.identity
+        print params
+        lines = []
+        success = False
+        response = ""
+        for url in [ClickatelHandler.outgoing_url]:
+             
+            try:
+                response = urllib2.urlopen(End2EndHandler.outgoing_url, urllib.urlencode(params))
+                for line in response:
+                    if "ERR" in line:
+                        # fail
+                        klass.backend.error("Error from gateway %s:\n%s" % (url, line))
+                        continue
+                # we didn't fail if we made it out
+                success = True
+                # stop looping over the urls on the first success
+                break
+            except Exception, e:
+                klass.backend.error("problem submitting to: %s" % url)
+                klass.backend.error("Exception is: %s" % e)
+        if success:
+            lines.insert(0,"Success!")
+        else:
+            lines.insert(0,"Error!")
+        
+        klass.backend.debug("Got response: %s" % "\n".join(response))
         
 def _is_uptime_check(handler):
     '''Determines whether the server is an uptime check
