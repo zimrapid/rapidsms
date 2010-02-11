@@ -1,0 +1,25 @@
+{% extends "layout-split-2.html" %}
+{% load reporters-tags %}
+{% load pagination-tags %}
+{% block title %}Reporter Uploader{% endblock %}
+
+{% block javascripts %}
+<script type="text/javascript" src="/static/reporters/javascripts/clear-form-elements.js"></script>
+<script type="text/javascript" src="/static/reporters/javascripts/cloneable.js"></script>
+{% endblock %}
+
+
+{% block left %}
+<div class="module">
+	<h2>Upload Reporters</h2>
+
+	<p>Use this application to upload reporters to the system. Uploaded files should be in CSV format with between 3 to 4 columns, First Name, Last Name, Phone #, and an optional group which they are a part of.</p>
+	 <form method="POST" enctype="multipart/form-data" id="rep-uploads" action="/uploader/upload">
+		<input type="file" name="csv_file"/>
+                <div class="submit">
+                        <input type="submit" name="upload" value="Upload Reporters" />
+                </div>
+
+	</form>
+</div>
+{% endblock %}

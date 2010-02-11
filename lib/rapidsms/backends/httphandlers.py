@@ -47,7 +47,6 @@ class RapidBaseHttpHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.send_header("Content-type", "text/html")
         self.end_headers()
         self.wfile.write(_str(msg))
-
     
 class HttpHandler(RapidBaseHttpHandler):
     '''The original http handler, used by the httptester app.
@@ -481,20 +480,29 @@ class ClickatellHandler(RapidBaseHttpHandler):
     param_text = "text"
     param_sender = "from"
     
-    outgoing_url = "http://api.clickatell.com/http/sendmsg"
+    outgoing_url = "https://api.clickatell.com/http/sendmsg"
     # api_id (customer identification number)
     # user: clickatell username
     # password: clickatell password
     # to: number of the sms receiver
     # text: short message text
-    outgoing_params = {"api_id" : "please", 
-                       "user" : "fix", 
-                       "password" : "me" 
+    outgoing_params = {"api_id" : "add", 
+                       "user" : "defaults", 
+                       "password" : "here",
+        		       "from" : "from_number"
                        }
     param_text_outgoing = "text"
     param_dst_outgoing = "to"
     param_sender_outgoing = "from"
 
+    @classmethod
+    def get_handler_param_keys(klass):
+        return ClickatellHandler.outgoing_params.keys()
+
+    @classmethod
+    def set_handler_params(klass, externalparams):
+        for key in externalparams:
+            ClickatellHandler.outgoing_params[key] = externalparams[key]
 
     def do_GET(self):
         params = get_params(self)
@@ -527,7 +535,8 @@ class ClickatellHandler(RapidBaseHttpHandler):
                 # messages come in from end2end with + instead of spaces, so
                 # change them
                 text = " ".join(text.split("+"))
-                
+               
+                # TODO: Define this for Clickatell settings
                 # there is an error reporting module in End2End that can forward
                 # errors to an endpoint.  If you configure it to forward here
                 # they will get logged and not included as incoming messages 
@@ -553,15 +562,17 @@ class ClickatellHandler(RapidBaseHttpHandler):
         klass.backend.debug("Clickatell outgoing message: %s" % message)
         params = ClickatellHandler.outgoing_params.copy()
         params[ClickatellHandler.param_text_outgoing] = message.text
-        params[ClickatellHandler.param_dst_outgoing] = message.connection.identity
+	
+	#Strip out any leading "+"s, because clickatel doesn't want them.
+        params[ClickatellHandler.param_dst_outgoing] = message.connection.identity.strip("+")
         print params
         lines = []
         success = False
         response = ""
-        for url in [ClickatelHandler.outgoing_url]:
+        for url in [ClickatellHandler.outgoing_url]:
              
             try:
-                response = urllib2.urlopen(End2EndHandler.outgoing_url, urllib.urlencode(params))
+                response = urllib2.urlopen(ClickatellHandler.outgoing_url, urllib.urlencode(params))
                 for line in response:
                     if "ERR" in line:
                         # fail

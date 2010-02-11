@@ -29,7 +29,7 @@ class App(rapidsms.app.App):
     MSG = {
         "en": {
             "bad-alias":   "Sorry, I don't know anyone by that name.",
-            "first-login": "Hello, %(name)s! This is the first time I've met you.",
+            "first-login": "Hello, %(name)s! Thanks for registering!",
             "login":       "Hello, %(name)s! It has been %(days)d days since I last heard from you.",
             "reminder":    "I think you are %(name)s.",
             "dont-know":   "Please register your phone with RapidSMS.",
@@ -143,6 +143,7 @@ class App(rapidsms.app.App):
         # into a parser of its own
         map = {
             "register":  ["register (whatever)"],
+            "remove":    ["remove", "unregister"],
             "identify":  ["identify (slug)", "this is (slug)", "i am (slug)"],
             "remind":    ["whoami", "who am i", LLIN_MY_STATUS],
             "reporters": ["list reporters", "reporters\\?"],
@@ -160,6 +161,14 @@ class App(rapidsms.app.App):
         # for us; allow processing to continue
         return False
     
+    def remove(self, msg):
+        try:
+            if msg.reporter is not None:
+               msg.reporter.delete()
+               msg.respond("You have been removed from the list")
+        except:
+            msg.respond("You could not be removed automatically. Please call +2635555555")
+
     
     def register(self, msg, name):
         try:

@@ -131,8 +131,8 @@ def combined_message_log(reporters=None):
     # NOTE: the following line had to be commented out and changed
     # to the below to run in mysql.  I have not tested the new version
     # so this may break on sqlite.
-    sql = incoming_sql + " union all " + outgoing_sql + " order by inc.received desc"
-    #sql = incoming_sql + " union all " + outgoing_sql + " order by received desc"
+    #sql = incoming_sql + " union all " + outgoing_sql + " order by inc.received desc"
+    sql = incoming_sql + " union all " + outgoing_sql + " order by received desc"
     cursor = connection.cursor()
     cursor.execute(sql)
 
